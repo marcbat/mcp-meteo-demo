@@ -43,7 +43,40 @@ Le serveur expose 9 outils météo :
    dotnet build
    ```
 
-2. Configurer dans VS Code (settings MCP)
+2. Configurer dans VS Code en ajoutant au fichier de configuration MCP :
+   
+   **Windows** : `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
+   
+   **macOS/Linux** : `~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
+
+   ```json
+   {
+     "mcpServers": {
+       "meteo-dotnet": {
+         "command": "dotnet",
+         "args": [
+           "run",
+           "--project",
+           "C:\\chemin\\vers\\MCP\\MonServeurMeteo.csproj"
+         ],
+         "disabled": false,
+         "alwaysAllow": []
+       }
+     }
+   }
+   ```
+
+   Ou via les settings VS Code (`.vscode/settings.json`) :
+   ```json
+   {
+     "mcp.servers": {
+       "meteo-dotnet": {
+         "command": "dotnet",
+         "args": ["run", "--project", "./MonServeurMeteo.csproj"]
+       }
+     }
+   }
+   ```
 
 3. Le serveur démarre automatiquement et expose ses outils à l'assistant Copilot
 
