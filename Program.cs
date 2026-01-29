@@ -79,6 +79,7 @@ while (true)
         var paramsNode = request?["params"];
 
         object? result = null;
+        bool isNotification = id == null; // Les notifications n'ont pas d'ID
 
         // ========================================
         // 3.2. ROUTAGE DES MÉTHODES MCP
@@ -89,6 +90,13 @@ while (true)
             // INITIALIZE : Première méthode appelée par VS Code au démarrage
             // On retourne les capacités du serveur (ici : tools uniquement)
             result = dispatcher.Initialize();
+        }
+        else if (method == "notifications/initialized")
+        {
+            // NOTIFICATION : Le client confirme avoir reçu initialize
+            // Pas de réponse à envoyer (c'est une notification)
+            simpleLogger.LogInfo("[MCP] Notification initialized reçue - Connexion établie");
+            continue; // On passe à la prochaine itération sans envoyer de réponse
         }
         else if (method == "tools/list")
         {
@@ -111,15 +119,31 @@ while (true)
         // 3.3. ENVOI DE LA RÉPONSE JSON-RPC
         // ========================================
         // Format de réponse JSON-RPC : { jsonrpc, id, result }
+        // L'ID peut être un number ou une string selon le client
+        object? idValue = null;
+        if (id != null)
+        {
+            if (id.GetValueKind() == JsonValueKind.Number)
+                idValue = id.GetValue<int>();
+            else if (id.GetValueKind() == JsonValueKind.String)
+                idValue = id.GetValue<string>();
+        }
+        
         var response = new
         {
             jsonrpc = "2.0",
-            id = id?.GetValue<int>(),
+            id = idValue,
             result
         };
 
+        // Options de sérialisation : camelCase obligatoire pour MCP
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         // Envoi de la réponse sur stdout (une ligne JSON)
-        await writer.WriteLineAsync(JsonSerializer.Serialize(response));
+        await writer.WriteLineAsync(JsonSerializer.Serialize(response, options));
     }
     catch (Exception ex)
     {
@@ -128,12 +152,35 @@ while (true)
         // ========================================
         // En cas d'erreur, on renvoie une réponse d'erreur JSON-RPC
         // Code -32603 = Internal error (erreur serveur)
+        
+        // On tente de récupérer l'ID de la requête pour la réponse d'erreur
+        object? idValue = null;
+        try
+        {
+            var request = JsonNode.Parse(line!);
+            var id = request?["id"];
+            if (id != null)
+            {
+                if (id.GetValueKind() == JsonValueKind.Number)
+                    idValue = id.GetValue<int>();
+                else if (id.GetValueKind() == JsonValueKind.String)
+                    idValue = id.GetValue<string>();
+            }
+        }
+        catch { /* Si le parsing échoue, on garde null */ }
+        
         var errorResponse = new
         {
             jsonrpc = "2.0",
-            id = (int?)null,
+            id = idValue,
             error = new { code = -32603, message = ex.Message }
         };
-        await writer.WriteLineAsync(JsonSerializer.Serialize(errorResponse));
+        
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+        
+        await writer.WriteLineAsync(JsonSerializer.Serialize(errorResponse, options));
     }
 }

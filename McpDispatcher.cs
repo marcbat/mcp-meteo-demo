@@ -1,5 +1,36 @@
 using Microsoft.SemanticKernel;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+
+// ========================================
+// CLASSES DE RÉPONSE MCP (pour sérialisation correcte)
+// ========================================
+public class InitializeResponse
+{
+    [JsonPropertyName("protocolVersion")]
+    public string ProtocolVersion { get; set; } = "2024-11-05";
+    
+    [JsonPropertyName("capabilities")]
+    public Capabilities Capabilities { get; set; } = new();
+    
+    [JsonPropertyName("serverInfo")]
+    public ServerInfo ServerInfo { get; set; } = new();
+}
+
+public class Capabilities
+{
+    [JsonPropertyName("tools")]
+    public object Tools { get; set; } = new { };
+}
+
+public class ServerInfo
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+    
+    [JsonPropertyName("version")]
+    public string Version { get; set; } = "";
+}
 
 // ========================================
 // DISPATCHER : GESTION DU PROTOCOLE MCP
@@ -28,16 +59,15 @@ public class McpDispatcher
     public object Initialize()
     {
         _logger.LogInfo("[MCP] Initialize appelé - Handshake avec VS Code");
-        var response = new 
-        { 
-            protocolVersion = "2024-11-05",  // Version du protocole MCP
-            capabilities = new { 
-                tools = new { }  // On déclare supporter les "tools" (outils)
-            },
-            serverInfo = new { 
-                name = "MeteoServer-Dotnet",  // Nom de notre serveur
-                version = "1.0.0"               // Version de notre serveur
-            } 
+        var response = new InitializeResponse
+        {
+            ProtocolVersion = "2024-11-05",
+            Capabilities = new Capabilities { Tools = new { } },
+            ServerInfo = new ServerInfo 
+            { 
+                Name = "meteo-dotnet",
+                Version = "1.0.0"
+            }
         };
         _logger.LogInfo($"[MCP] Initialize - Réponse envoyée avec {_kernel.Plugins.SelectMany(p => p).Count()} outil(s)");
         return response;
